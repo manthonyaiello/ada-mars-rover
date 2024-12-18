@@ -8,36 +8,38 @@ package body Rover.Servos is
    PCA9685_Addr : constant := 16#40# * 2;
 
    PCA9685_MODE1_REG    : constant := 16#00#;
-   PCA9685_MODE2_REG    : constant := 16#01#;
-   PCA9685_SUBADR1_REG  : constant := 16#02#;
-   PCA9685_SUBADR2_REG  : constant := 16#03#;
-   PCA9685_SUBADR3_REG  : constant := 16#04#;
-   PCA9685_ALLCALL_REG  : constant := 16#05#;
-   PCA9685_LED0_REG     : constant := 16#06#; -- Start of LEDx regs, 4B per reg, 2B on phase, 2B off phase, little-endian
+   --  PCA9685_MODE2_REG    : constant := 16#01#;
+   --  PCA9685_SUBADR1_REG  : constant := 16#02#;
+   --  PCA9685_SUBADR2_REG  : constant := 16#03#;
+   --  PCA9685_SUBADR3_REG  : constant := 16#04#;
+   --  PCA9685_ALLCALL_REG  : constant := 16#05#;
+   PCA9685_LED0_REG     : constant := 16#06#;
    PCA9685_PRESCALE_REG : constant := 16#FE#;
-   PCA9685_ALLLED_REG   : constant := 16#FA#;
+   --  PCA9685_ALLLED_REG   : constant := 16#FA#;
 
    --  Mode1 register values
    MODE1_RESTART : constant := 16#80#;
-   MODE1_EXTCLK  : constant := 16#40#;
+   --  MODE1_EXTCLK  : constant := 16#40#;
    MODE1_AUTOINC : constant := 16#20#;
    MODE1_SLEEP   : constant := 16#10#;
-   MODE1_SUBADR1 : constant := 16#08#;
-   MODE1_SUBADR2 : constant := 16#04#;
-   MODE1_SUBADR3 : constant := 16#02#;
-   MODE1_ALLCALL : constant := 16#01#;
+   --  MODE1_SUBADR1 : constant := 16#08#;
+   --  MODE1_SUBADR2 : constant := 16#04#;
+   --  MODE1_SUBADR3 : constant := 16#02#;
+   --  MODE1_ALLCALL : constant := 16#01#;
 
    --  Mode2 register values
-   MODE2_OUTDRV_TPOLE : constant := 16#04#;
-   MODE2_INVRT        : constant := 16#10#;
-   MODE2_OUTNE_TPHIGH : constant := 16#01#;
-   MODE2_OUTNE_HIGHZ  : constant := 16#02#;
-   MODE2_OCH_ONACK    : constant := 16#08#;
-
-    Mode1_Reg : UInt8 := 0;
+   --  MODE2_OUTDRV_TPOLE : constant := 16#04#;
+   --  MODE2_INVRT        : constant := 16#10#;
+   --  MODE2_OUTNE_TPHIGH : constant := 16#01#;
+   --  MODE2_OUTNE_HIGHZ  : constant := 16#02#;
+   --  MODE2_OCH_ONACK    : constant := 16#08#;
 
    type Channel_Id is range 0 .. 15;
    type PWM_Range is range 0 .. 4096;
+
+   --------------------
+   -- Write_Register --
+   --------------------
 
    procedure Write_Register (Reg, Val : UInt8) is
       use HAL.I2C;
@@ -50,13 +52,17 @@ package body Rover.Servos is
         (Addr => PCA9685_Addr,
          Mem_Addr => HAL.UInt16 (Reg),
          Mem_Addr_Size => HAL.I2C.Memory_Size_8b,
-         Data =>  (1 => Val),
+         Data => [1 => Val],
          Status => Status);
 
       if Status /= HAL.I2C.Ok then
          raise Program_Error;
       end if;
    end Write_Register;
+
+   -------------
+   -- Set_PWM --
+   -------------
 
    procedure Set_PWM (Chan : Channel_Id; PWM : PWM_Range) is
       use HAL.I2C;
@@ -73,16 +79,20 @@ package body Rover.Servos is
         (Addr => PCA9685_Addr,
          Mem_Addr => HAL.UInt16 (Reg),
          Mem_Addr_Size => HAL.I2C.Memory_Size_8b,
-         Data =>  (1 => UInt8 (Phase_Begin and 16#FF#),
-                   2 => UInt8 (Shift_Right (Phase_Begin, 8) and 16#FF#),
-                   3 => UInt8 (Phase_End and 16#FF#),
-                   4 => UInt8 (Shift_Right (Phase_End, 8) and 16#FF#)),
+         Data => [1 => UInt8 (Phase_Begin and 16#FF#),
+                  2 => UInt8 (Shift_Right (Phase_Begin, 8) and 16#FF#),
+                  3 => UInt8 (Phase_End and 16#FF#),
+                  4 => UInt8 (Shift_Right (Phase_End, 8) and 16#FF#)],
          Status => Status);
 
       if Status /= HAL.I2C.Ok then
          raise Program_Error;
       end if;
    end Set_PWM;
+
+   -------------------
+   -- Set_Frequency --
+   -------------------
 
    procedure Set_Frequency (Freq : Float) is
       Prescaler : Integer;
@@ -103,28 +113,19 @@ package body Rover.Servos is
       RP.Device.Timer.Delay_Milliseconds (500);
    end Set_Frequency;
 
-   procedure Initialize is
-      --  use HAL.I2C;
-      --  Status : HAL.I2C.I2C_Status;
-  begin
-      --  for X in HAL.I2C.I2C_Address loop
-      --     Mem_Write
-      --       (Addr     => X,
-      --        Mem_Addr => 0,
-      --        Mem_Addr_Size => HAL.I2C.Memory_Size_8b,
-      --        Data =>  (1 => 0),
-      --        Status => Status);
-      --     if Status = Ok then
-      --        for LOL in 1 .. 100_000 loop
-      --           null;
-      --        end loop;
-      --     end if;
-      --  end loop;
+   ----------------
+   -- Initialize --
+   ----------------
 
+   procedure Initialize is
+   begin
       Set_Frequency (50.0);
       Write_Register (PCA9685_MODE1_REG, MODE1_RESTART or MODE1_AUTOINC);
-
    end Initialize;
+
+   ---------------
+   -- Set_Wheel --
+   ---------------
 
    procedure Set_Wheel (Wheel : Steering_Wheel_Id;
                         Side  : Side_Id;
