@@ -155,9 +155,15 @@ package body Rover.Servos is
    -- Set_Mast --
    --------------
 
-   procedure Set_Mast (V : Integer) is
+   procedure Set_Mast (V : Mast_Angle) is
+      Center     : constant := 327.0;
+      Side_Range : constant := 200.0;
+      Move_Step  : constant := Side_Range / 90.0;
+
+      Offset : constant Integer := Integer (-Float (V) * Move_Step);
+      Pos : constant PWM_Range := PWM_Range (Integer (Center) + Offset);
    begin
-      Set_PWM (0, PWM_Range (V));
+      Set_PWM (0, Pos);
    end Set_Mast;
 
 begin
