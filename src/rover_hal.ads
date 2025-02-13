@@ -30,17 +30,17 @@ is
    --  Monotonic clock running at Ticks_Per_Seconds
 
    function Milliseconds
-     (T : Natural)
+     (T : Unsigned_32)
       return Time
    is ((Ticks_Per_Second / 1_000) * Time (T));
    --  Return the number of Time ticks per milliseconds
 
-   procedure Delay_Microseconds (Us : Integer)
+   procedure Delay_Microseconds (Us : Unsigned_16)
      with
        Pre => Initialized,
        Global => (HW_State, HW_Init);
 
-   procedure Delay_Milliseconds (Ms : Integer)
+   procedure Delay_Milliseconds (Ms : Unsigned_16)
      with
        Pre => Initialized,
        Global => (HW_State, HW_Init);
@@ -49,7 +49,7 @@ is
    -- Sonar --
    -----------
 
-   function Sonar_Distance return Natural
+   function Sonar_Distance return Unsigned_32
      with
        Pre => Initialized,
        Global => (HW_State, HW_Init),

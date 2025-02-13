@@ -1,3 +1,4 @@
+with Interfaces; use Interfaces;
 with Rover_HAL; use Rover_HAL;
 
 package body Rover.Autonomous
@@ -100,8 +101,8 @@ is
    ------------------------
 
    procedure Find_New_Direction (This : in out Auto_State) is
-      Left_Dist : Natural;
-      Right_Dist : Natural;
+      Left_Dist : Unsigned_32;
+      Right_Dist : Unsigned_32;
 
       Timeout : constant Time := Clock + Milliseconds (8000);
    begin
