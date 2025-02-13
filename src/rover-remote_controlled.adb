@@ -1,3 +1,4 @@
+with Interfaces; use Interfaces;
 with Rover_HAL; use Rover_HAL;
 
 package body Rover.Remote_Controlled
@@ -49,7 +50,7 @@ is
 
    procedure Run is
       Buttons : Buttons_State;
-      Dist : Natural;
+      Dist : Unsigned_32;
 
       Cmd, Last_Cmd : Remote_Command := None;
 

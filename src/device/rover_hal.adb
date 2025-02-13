@@ -25,7 +25,6 @@ is
       return HW_Initialized;
    end Initialized;
 
-
    ----------------
    -- Initialize --
    ----------------
@@ -56,27 +55,27 @@ is
    -- Delay_Microseconds --
    ------------------------
 
-   procedure Delay_Microseconds (Us : Integer) is
+   procedure Delay_Microseconds (Us : Unsigned_16) is
    begin
-      RP.Device.Timer.Delay_Microseconds (Us);
+      RP.Device.Timer.Delay_Microseconds (Integer (Us));
    end Delay_Microseconds;
 
    ------------------------
    -- Delay_Milliseconds --
    ------------------------
 
-   procedure Delay_Milliseconds (Ms : Integer) is
+   procedure Delay_Milliseconds (Ms : Unsigned_16) is
    begin
-      RP.Device.Timer.Delay_Milliseconds (Ms);
+      RP.Device.Timer.Delay_Milliseconds (Integer (Ms));
    end Delay_Milliseconds;
 
    -----------
    -- Sonar --
    -----------
 
-   function Sonar_Distance return Natural is
+   function Sonar_Distance return Unsigned_32 is
    begin
-      return Rover_HAL.Sonar.Distance;
+      return Unsigned_32 (Rover_HAL.Sonar.Distance);
    end Sonar_Distance;
 
    ----------
