@@ -1,7 +1,11 @@
-package Rover.Tasks is
+with Rover_HAL;
+
+package Rover.Tasks
+with SPARK_Mode
+is
 
    procedure Demo
-     with No_Return;
+     with Pre => Rover_HAL.Initialized;
 
    pragma Export (C, Demo, "mars_rover_demo_task");
 
