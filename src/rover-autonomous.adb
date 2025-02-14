@@ -2,7 +2,7 @@ with Interfaces; use Interfaces;
 with Rover_HAL; use Rover_HAL;
 
 package body Rover.Autonomous
-with SPARK_Mode => Off
+with SPARK_Mode
 is
 
    type Mast_Direction is (Left, None, Right);
@@ -53,11 +53,11 @@ is
    -- Check_User_Input --
    ----------------------
 
-   function Check_User_Input (This : in out Auto_State) return Boolean is
-      State : constant Buttons_State := Update;
+   procedure Check_User_Input (This : in out Auto_State) is
+      State : Buttons_State;
    begin
+      State := Update;
       This.User_Exit := (for some B in Buttons => State (B));
-      return This.User_Exit;
    end Check_User_Input;
 
    ----------------
@@ -65,6 +65,7 @@ is
    ----------------
 
    procedure Go_Forward (This : in out Auto_State) is
+      Distance : Unsigned_32;
    begin
 
       --  Go forward...
@@ -73,10 +74,18 @@ is
       Set_Power (Right, 100);
 
       --  Rotate the mast and check for obstacle
-      while not Check_User_Input (This) loop
+      loop
+
+         Check_User_Input (This);
+
+         exit when This.User_Exit;
+
          Next_Mast_Pos (This, -45, 45, Milliseconds (10));
 
-         exit when Sonar_Distance < 30;
+         Distance := Sonar_Distance;
+
+         exit when Distance < 30;
+
          Delay_Milliseconds (10);
       end loop;
    end Go_Forward;
@@ -101,18 +110,27 @@ is
    ------------------------
 
    procedure Find_New_Direction (This : in out Auto_State) is
-      Left_Dist : Unsigned_32;
-      Right_Dist : Unsigned_32;
+      Left_Dist : Unsigned_32 := 0;
+      Right_Dist : Unsigned_32 := 0;
 
-      Timeout : constant Time := Clock + Milliseconds (8000);
+      Timeout, Now : Time;
+
    begin
+      Now := Clock;
+      Timeout := Now + Milliseconds (8000);
+
       Set_Turn (Straight);
       Set_Power (Left, 0);
       Set_Power (Right, 0);
 
       --  Turn the mast back and forth and log the dected distance for the left
       --  and right side.
-      while not Check_User_Input (This) and then Clock < Timeout loop
+      loop
+         Check_User_Input (This);
+         Now := Clock;
+
+         exit when This.User_Exit or else Now > Timeout;
+
          Next_Mast_Pos (This, -55, 55, Milliseconds (20));
 
          if This.Pos <= -40 then
@@ -125,7 +143,7 @@ is
          Delay_Milliseconds (10);
       end loop;
 
-      if Clock > Timeout then
+      if Now > Timeout then
          if Left_Dist < 50 and then Right_Dist < 50 then
             --  Obstacles left and right, turn around to find a new direction
             Turn_Around;

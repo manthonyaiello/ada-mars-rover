@@ -2,7 +2,7 @@ with Interfaces; use Interfaces;
 with Rover_HAL; use Rover_HAL;
 
 package body Rover.Remote_Controlled
-with SPARK_Mode => Off
+with SPARK_Mode
 is
 
    type Remote_Command is (None,
@@ -54,11 +54,18 @@ is
 
       Cmd, Last_Cmd : Remote_Command := None;
 
-      Last_Interaction_Time : Time := Clock;
+      Now : Time;
+      Last_Interaction_Time : Time;
       Timeout : constant Time := Milliseconds (10_000);
    begin
 
-      while Last_Interaction_Time < Clock + Timeout loop
+      Last_Interaction_Time := Clock;
+
+      loop
+         Now := Clock;
+
+         exit when Last_Interaction_Time + Timeout > Now;
+
          Buttons := Update;
          Dist := Sonar_Distance;
          Last_Cmd := Cmd;

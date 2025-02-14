@@ -2,7 +2,9 @@ with Rover_HAL;
 with Rover.Autonomous;
 with Rover.Remote_Controlled;
 
-package body Rover.Tasks is
+package body Rover.Tasks
+with SPARK_Mode
+is
 
    ----------
    -- Demo --
@@ -10,8 +12,6 @@ package body Rover.Tasks is
 
    procedure Demo is
    begin
-      Rover_HAL.Initialize;
-
       Rover_HAL.Set_Power (Rover_HAL.Left, 100);
 
       --  Alternate between autonomous and remote controlled mode. Automous
