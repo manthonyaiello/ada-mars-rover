@@ -4,9 +4,10 @@ package Rover_HAL
 with
   Abstract_State => (HW_Init,
                      (HW_State with Synchronous),
-                     Power_State,
-                     Turn_State),
-  Initializes    => (HW_State, Power_State, Turn_State),
+                     (Power_State with Ghost),
+                     (Turn_State with Ghost),
+                     (Distance_State with Ghost)),
+  Initializes    => (HW_State, Power_State, Turn_State, Distance_State),
   SPARK_Mode,
   Always_Terminates
 is
@@ -56,14 +57,15 @@ is
      with
        Pre    => Initialized,
        Post   => Get_Sonar_Distance = Sonar_Distance'Result,
-       Global => (HW_State, HW_Init),
+       Global => (Input => (HW_State, HW_Init),
+                  In_Out => Distance_State),
        Side_Effects,
        Volatile_Function;
 
    function Get_Sonar_Distance return Unsigned_32
      with
       Pre    => Initialized,
-      GLobal => (HW_Init),
+      Global => (HW_Init, Distance_State),
       Ghost,
       Import;
    --  Return the value of the last Sonar Distance obtained by calling

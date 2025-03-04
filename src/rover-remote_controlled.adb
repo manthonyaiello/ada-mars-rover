@@ -5,7 +5,8 @@ package body Rover.Remote_Controlled
 with SPARK_Mode
 is
 
-   type Remote_Command is (None,
+   type Remote_Command is (Invalid,
+                           None,
                            Forward,
                            Backward,
                            Turn_Left,
@@ -17,6 +18,7 @@ is
 
    function Img (Cmd : Remote_Command) return String
    is (case Cmd is
+          when Invalid       => "Invalid",
           when None          => "None",
           when Forward       => "Forward",
           when Backward      => "Backward",
@@ -35,27 +37,26 @@ is
    function To_Command (Buttons : Buttons_State)
                         return Remote_Command
    is
-   begin
-      if Buttons (Up) and then Buttons (Left) then
-         return Forward_Left;
+      (if Buttons (Up) and then Buttons (Left) then
+         Forward_Left
       elsif Buttons (Up) and then Buttons (Right) then
-         return Forward_Right;
+         Forward_Right
       elsif Buttons (Down) and then Buttons (Left) then
-         return Back_Left;
+         Back_Left
       elsif Buttons (Down) and then Buttons (Right) then
-         return Back_Right;
+         Back_Right
       elsif Buttons (Up)  then
-         return Forward;
+         Forward
       elsif Buttons (Right) then
-         return Turn_Right;
+         Turn_Right
       elsif Buttons (Left) then
-         return Turn_Left;
+         Turn_Left
       elsif Buttons (Down) then
-         return Backward;
+         Backward
       else
-         return None;
-      end if;
-   end To_Command;
+         None)
+   with
+      Annotate => (GNATprove, Inline_for_Proof);
 
    ---------
    -- Run --
@@ -65,7 +66,7 @@ is
       Buttons : Buttons_State;
       Dist : Unsigned_32;
 
-      Cmd : Remote_Command := None;
+      Cmd : Remote_Command := Invalid;
       Last_Cmd : Remote_Command;
 
       Now : Time;
@@ -103,9 +104,6 @@ is
          if Cmd /= Last_Cmd then
 
             case Cmd is
-            when None =>
-               Set_Power (Left, 0);
-               Set_Power (Right, 0);
             when Forward =>
                Set_Turn (Straight);
                Set_Power (Left, 100);
@@ -138,11 +136,23 @@ is
                Set_Turn (Left);
                Set_Power (Left, -50);
                Set_Power (Right, -100);
+            when others =>
+               Set_Power (Left, 0);
+               Set_Power (Right, 0);
             end case;
          end if;
 
          Delay_Milliseconds (30);
 
+         --  Carry the information about the relationship between Cmd and the
+         --  turn and power settings around the loop, since when Cmd = Last_Cmd
+         --  these values are retained.
+         pragma Loop_Invariant (if Cmd /= Forward then
+                                   Get_Turn /= Straight or
+                                   (Get_Power (Left) <= 0 and
+                                    Get_Power (Right) <= 0));
+
+         --  Establish our safety property.
          pragma Loop_Invariant (Rover.Cannot_Crash);
       end loop;
    end Run;

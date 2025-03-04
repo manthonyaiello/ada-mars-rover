@@ -9,7 +9,8 @@ package Rover with SPARK_Mode is
        Pre    => Rover_HAL.Initialized,
        Global => (Rover_HAL.HW_Init,
                   Rover_HAL.Power_State,
-                  Rover_HAL.Turn_State),
+                  Rover_HAL.Turn_State,
+                  Rover_HAL.Distance_State),
        Ghost;
    --  Safety Requirement: The Mars Rover shall not proceed straight forward
    --  when the distance to an obstacle is less than the Safety Distance.
