@@ -163,4 +163,10 @@ is
       Set_Power_Import (Side'Enum_Rep, Integer_8 (Pwr));
    end Set_Power;
 
+   ----------------------
+   -- Set_Display_Info --
+   ----------------------
+
+   procedure Set_Display_Info (Str : String) is null;
+   --  Display not available on the simulator
 end Rover_HAL;
