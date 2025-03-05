@@ -15,6 +15,10 @@ package body Rover_HAL.Remote is
    CS_Delay_Us : constant := 15;
    Inter_Byte_Delay_Us : constant := 15;
 
+   G_Prev_Valid : Boolean := False;
+   G_Prev_State : Buttons_State := [others => False];
+   G_Last_Valid_Time : Time := 0;
+
    ------------------
    -- Busy_Wait_US --
    ------------------
@@ -115,58 +119,82 @@ package body Rover_HAL.Remote is
    begin
       Transfer (Cmd, Data);
 
-      if Data (1) /= 16#FF#
-        or else
-         Data (3) /= 16#5A#
+      if Data (1) = 16#FF#
+        and then
+         Data (3) = 16#5A#
       then
-         return Result;
+
+         if (Data (5) and 16#20#) = 0 then
+            Result (A) := True;
+         end if;
+         if (Data (5) and 16#40#) = 0 then
+            Result (B) := True;
+         end if;
+         if (Data (5) and 16#80#) = 0 then
+            Result (C) := True;
+         end if;
+         if (Data (5) and 16#10#) = 0 then
+            Result (D) := True;
+         end if;
+
+         if (Data (4) and 16#80#) = 0 then
+            Result (Left) := True;
+         end if;
+         if (Data (4) and 16#10#) = 0 then
+            Result (Up) := True;
+         end if;
+         if (Data (4) and 16#20#) = 0 then
+            Result (Right) := True;
+         end if;
+         if (Data (4) and 16#40#) = 0 then
+            Result (Down) := True;
+         end if;
+
+         if (Data (5) and 16#08#) = 0 then
+            Result (R1) := True;
+         end if;
+         if (Data (5) and 16#02#) = 0 then
+            Result (R2) := True;
+         end if;
+         if (Data (5) and 16#04#) = 0 then
+            Result (L1) := True;
+         end if;
+         if (Data (5) and 16#01#) = 0 then
+            Result (L2) := True;
+         end if;
+
+         if (Data (4) and 16#01#) = 0 then
+            Result (Sel) := True;
+         end if;
+         if (Data (4) and 16#08#) = 0 then
+            Result (Start) := True;
+         end if;
+
       end if;
 
-      if (Data (5) and 16#20#) = 0 then
-         Result (A) := True;
-      end if;
-      if (Data (5) and 16#40#) = 0 then
-         Result (B) := True;
-      end if;
-      if (Data (5) and 16#80#) = 0 then
-         Result (C) := True;
-      end if;
-      if (Data (5) and 16#10#) = 0 then
-         Result (D) := True;
-      end if;
-
-      if (Data (4) and 16#80#) = 0 then
-         Result (Left) := True;
-      end if;
-      if (Data (4) and 16#10#) = 0 then
-         Result (Up) := True;
-      end if;
-      if (Data (4) and 16#20#) = 0 then
-         Result (Right) := True;
-      end if;
-      if (Data (4) and 16#40#) = 0 then
-         Result (Down) := True;
-      end if;
-
-      if (Data (5) and 16#08#) = 0 then
-         Result (R1) := True;
-      end if;
-      if (Data (5) and 16#02#) = 0 then
-         Result (R2) := True;
-      end if;
-      if (Data (5) and 16#04#) = 0 then
-         Result (L1) := True;
-      end if;
-      if (Data (5) and 16#01#) = 0 then
-         Result (L2) := True;
-      end if;
-
-      if (Data (4) and 16#01#) = 0 then
-         Result (Sel) := True;
-      end if;
-      if (Data (4) and 16#08#) = 0 then
-         Result (Start) := True;
-      end if;
+      --  Communication is not very reliable. For this reason, in case of an
+      --  empty packet, we may repeat a previous non empty packet received a
+      --  few milliseconds ago.
+      declare
+         Now : constant Time := Clock;
+         Valid : constant Boolean := (for some E of Result => E);
+      begin
+         if Valid then
+            G_Prev_Valid := True;
+            G_Last_Valid_Time := Now;
+            G_Prev_State := Result;
+         else
+            if G_Prev_Valid
+              and then
+                G_Last_Valid_Time + Milliseconds (500) > Now
+            then
+               --  Replace with a valid package that we got not so long ago
+               Result := G_Prev_State;
+            else
+               G_Prev_Valid := False;
+            end if;
+         end if;
+      end;
 
       GUI.Last_Remote_Packet := Data;
       return Result;
