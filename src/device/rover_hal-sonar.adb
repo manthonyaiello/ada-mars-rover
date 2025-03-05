@@ -1,5 +1,6 @@
 with RP.GPIO; use RP.GPIO;
 with Pico;
+with Atomic.Critical_Section;
 
 package body Rover_HAL.Sonar is
 
@@ -12,6 +13,7 @@ package body Rover_HAL.Sonar is
    --------------
 
    function One_Shot return Natural is
+      IE : Atomic.Critical_Section.Interrupt_State;
       T1, T2, T3, Tick : Time;
    begin
       Configure (Pin, Output, Floating);
@@ -20,6 +22,9 @@ package body Rover_HAL.Sonar is
       Clear (Pin);
 
       Configure (Pin, Input, Floating);
+
+      Atomic.Critical_Section.Enter (IE);
+
       T1 := Rover_HAL.Clock;
 
       while not Set (Pin) loop
@@ -37,6 +42,8 @@ package body Rover_HAL.Sonar is
          end if;
       end loop;
       T3 := Tick;
+
+      Atomic.Critical_Section.Leave (IE);
 
       return Natural (T3 - T2);
    end One_Shot;
