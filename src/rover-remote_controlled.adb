@@ -148,8 +148,8 @@ is
          --  turn and power settings around the loop, since when Cmd = Last_Cmd
          --  these values are retained.
          pragma Loop_Invariant (if Cmd /= Forward then
-                                   Get_Turn /= Straight or
-                                   (Get_Power (Left) <= 0 and
+                                   Get_Turn /= Straight or else
+                                   (Get_Power (Left) <= 0 and then
                                     Get_Power (Right) <= 0));
 
          --  Establish our safety property.

@@ -65,7 +65,7 @@ package body Rover_HAL.Screen is
    DISPLAY_ALL_ON_RESUME : constant := 16#A4#;
    --  DISPLAY_ALL_ON        : constant := 16#A5#;
    NORMAL_DISPLAY        : constant := 16#A6#;
-   INVERT_DISPLAY        : constant := 16#A7#;
+   --  INVERT_DISPLAY        : constant := 16#A7#;
    DISPLAY_OFF           : constant := 16#AE#;
    DISPLAY_ON            : constant := 16#AF#;
    SET_DISPLAY_OFFSET    : constant := 16#D3#;
@@ -317,7 +317,6 @@ package body Rover_HAL.Screen is
          X := X + Font_Width;
       end loop;
    end Print;
-
 
    ------------------
    -- Left_Pressed --
