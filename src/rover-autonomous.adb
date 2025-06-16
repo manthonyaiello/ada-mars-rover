@@ -34,10 +34,15 @@ is
 
    procedure Go_Forward (This : in out Auto_State) with
      Pre  => Initialized and then
-             Rover.Cannot_Crash,
-     Post => Initialized
+             Rover_HAL.Get_Sonar_Distance >= Rover.Safety_Distance,
+     Post => Initialized and then
+             Rover.Cannot_Crash
    is
-      Distance : Unsigned_32;
+      Distance : Unsigned_32 := Unsigned_32'Last;
+      Last_Distance : Unsigned_32 with Ghost;
+
+      Sonar_Sampling_Delay : constant := 40;
+      Distance_Threshold : constant := 40;
    begin
 
       --  Go forward...
@@ -47,18 +52,26 @@ is
 
       --  Rotate the mast and check for obstacle
       loop
-
          Check_User_Input (This);
-
          exit when This.User_Exit;
 
          Mast_Control.Next_Mast_Angle (This.Mast, -60, 70, 16);
 
+         Last_Distance := Distance;
          Distance := Sonar_Distance;
 
-         exit when Distance < 40;
+         Rover_Displacement_Model
+           (Distance, Last_Distance, Sonar_Sampling_Delay);
+         --  We invoke the Rover displacement model so that SPARK knows the
+         --  limits on how far the rover can have traveled since the last
+         --  distance measurement.
 
-         Delay_Milliseconds (40);
+         exit when Distance < Distance_Threshold;
+
+         pragma Loop_Invariant (Distance >= Distance_Threshold);
+         pragma Loop_Invariant (Rover.Cannot_Crash);
+
+         Delay_Milliseconds (Sonar_Sampling_Delay);
       end loop;
    end Go_Forward;
 
@@ -90,12 +103,40 @@ is
      with
       Pre  => Initialized,
       Post => Initialized and then
-              Rover.Cannot_Crash
+              (This.User_Exit or else
+               Rover_HAL.Get_Sonar_Distance >= Rover.Safety_Distance)
    is
       Left_Dist : Unsigned_32 := 0;
       Right_Dist : Unsigned_32 := 0;
 
       Timeout, Now : Time;
+
+      function Distance_Straight_Ahead
+        (This : in out Auto_State) return Unsigned_32
+      with
+         Side_Effects,
+         Pre  => Initialized,
+         Post => Initialized and then
+                 --  We have to make this promise because otherwise SPARK
+                 --  cannot know that the result actually came from the
+                 --  sonar.
+                 Rover_HAL.Get_Sonar_Distance = Distance_Straight_Ahead'Result
+
+      is
+      begin
+         Rover_HAL.Set_Mast_Angle (0);
+         --  Set the mast to the straight position - this can take a bit of
+         --  time, so:
+         Delay_Milliseconds (50);
+
+         return Distance : Unsigned_32 do
+            Distance := Sonar_Distance;
+         end return;
+         --  Extended return used because SPARK won't allow a simple return
+         --  statement here, because the function has side effects.
+      end Distance_Straight_Ahead;
+
+      Distance : Unsigned_32;
 
    begin
       Now := Clock;
@@ -105,46 +146,52 @@ is
       Set_Power (Left, 0);
       Set_Power (Right, 0);
 
-      --  Turn the mast back and forth and log the dected distance for the left
-      --  and right side.
-      loop
-         Check_User_Input (This);
-         Now := Clock;
+      --  Measure the distance straight ahead
+      Distance := Distance_Straight_Ahead (This);
 
-         exit when This.User_Exit or else Now > Timeout;
+      while Distance < Safety_Distance and not This.User_Exit loop
+         --  Turn the mast back and forth and log the dected distance for the
+         --  left and right side.
+         loop
+            Check_User_Input (This);
+            Now := Clock;
 
-         Mast_Control.Next_Mast_Angle (This.Mast, -60, 70, 4);
+            exit when This.User_Exit or else Now > Timeout;
 
-         if Mast_Control.Last_Angle (This.Mast) <= -40 then
-            Left_Dist := Sonar_Distance;
+            Mast_Control.Next_Mast_Angle (This.Mast, -60, 70, 4);
+
+            if Mast_Control.Last_Angle (This.Mast) <= -40 then
+               Left_Dist := Sonar_Distance;
+            end if;
+            if Mast_Control.Last_Angle (This.Mast) >= 40 then
+               Right_Dist := Sonar_Distance;
+            end if;
+
+            Delay_Milliseconds (30);
+         end loop;
+
+         if Now > Timeout then
+            if Left_Dist < 50 and then Right_Dist < 50 then
+               --  Obstacles left and right, turn around to find a new direction
+               Turn_Around;
+
+            elsif Left_Dist > Right_Dist then
+               --  Turn left a little
+               Set_Turn (Around);
+               Set_Power (Left, -100);
+               Set_Power (Right, 100);
+               Delay_Milliseconds (800);
+            else
+               --  Turn right a little
+               Set_Turn (Around);
+               Set_Power (Left, 100);
+               Set_Power (Right, -100);
+               Delay_Milliseconds (800);
+            end if;
+
+            Distance := Distance_Straight_Ahead (This);
          end if;
-         if Mast_Control.Last_Angle (This.Mast) >= 40 then
-            Right_Dist := Sonar_Distance;
-         end if;
-
-         Delay_Milliseconds (30);
       end loop;
-
-      if Now > Timeout then
-         if Left_Dist < 50 and then Right_Dist < 50 then
-            --  Obstacles left and right, turn around to find a new direction
-            Turn_Around;
-
-         elsif Left_Dist > Right_Dist then
-            --  Turn left a little
-            Set_Turn (Around);
-            Set_Power (Left, -100);
-            Set_Power (Right, 100);
-            Delay_Milliseconds (800);
-         else
-            --  Turn right a little
-            Set_Turn (Around);
-            Set_Power (Left, 100);
-            Set_Power (Right, -100);
-            Delay_Milliseconds (800);
-         end if;
-      end if;
-
    end Find_New_Direction;
 
    ---------
@@ -164,8 +211,12 @@ is
 
       while not State.User_Exit loop
 
-         Go_Forward (State);
          Find_New_Direction (State);
+
+         --  The user could have asked to exit the autonomous mode by now
+         exit when State.User_Exit;
+
+         Go_Forward (State);
 
          pragma Loop_Invariant (Rover.Cannot_Crash);
       end loop;
